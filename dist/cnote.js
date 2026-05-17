@@ -192,23 +192,19 @@ function importData(importPath) {
  */
 function main() {
     // --- БЛОК О Т Л А Д К И ---
-    console.log('\x1b[33m%s\x1b[0m', '=== ДИАГНОСТИКА АРГУМЕНТОВ ===');
-    console.log('Полный массив process.argv:');
-    console.dir(process.argv);
-    console.log('\nРазбор аргументов по индексам:');
-    process.argv.forEach((value, index) => {
-        let description = '';
-        if (index === 0)
-            description = '<- Путь к Node.js';
-        if (index === 1)
-            description = '<- Путь к исполняемому файлу';
-        if (index === 2)
-            description = '<- Команда (command)';
-        if (index > 2)
-            description = `<- Доп. аргумент №${index - 2}`;
-        console.log(`  Индекс [${index}]: "${value}" ${description}`);
-    });
-    console.log('\x1b[33m%s\x1b[0m', '==============================\n');
+    // console.log('\x1b[33m%s\x1b[0m', '=== ДИАГНОСТИКА АРГУМЕНТОВ ===');
+    // console.log('Полный массив process.argv:');
+    // console.dir(process.argv);
+    // console.log('\nРазбор аргументов по индексам:');
+    // process.argv.forEach((value, index) => {
+    //   let description = '';
+    //   if (index === 0) description = '<- Путь к Node.js';
+    //   if (index === 1) description = '<- Путь к исполняемому файлу';
+    //   if (index === 2) description = '<- Команда (command)';
+    //   if (index > 2) description = `<- Доп. аргумент №${index - 2}`;
+    //   console.log(`  Индекс [${index}]: "${value}" ${description}`);
+    // });
+    // console.log('\x1b[33m%s\x1b[0m', '==============================\n');
     // --- КОНЕЦ БЛОКА ОТЛАДКИ ---
     const args = process.argv.slice(2);
     const command = args[0];
