@@ -62,6 +62,53 @@ function writeData(data: DataSchema): void {
  * РЕАЛИЗАЦИЯ КОМАНД
  */
 
+function showHelp(): void {
+  console.log(`
+==================================================================
+  cnote — CLI-утилита для управления локальными заметками 📝
+==================================================================
+
+Использование:
+  cnote <команда> [аргументы]
+
+Основной список команд:
+  add "<текст>"     Добавить новую заметку.
+                    Пример: cnote add "Купить молоко"
+                    Можно указать теги: cnote add "Задачка" --tag работа --tag важная
+
+  list              Показать все ваши заметки.
+                    Флаги фильтрации:
+                    --done      Только выполненные
+                    --undone    Только невыполненные
+                    --tag <имя> Фильтр по конкретному тегу (можно несколько)
+
+  search "<текст>"  Полнотекстовый поиск по содержимому заметок и тегов.
+                    Пример: cnote search "собеседование"
+
+  done <id>         Отметить заметку как выполненную (id — 7 символов).
+                    Пример: cnote done a1b2c3d
+
+  undone <id>       Вернуть выполненную заметку обратно в работу.
+                    Пример: cnote undone a1b2c3d
+
+  delete <id>       Навсегда удалить заметку из базы данных.
+                    Пример: cnote delete a1b2c3d
+
+Управление данными и статистика:
+  stats             Показать аналитику (всего заметок, сколько выполнено, теги).
+  
+  export <путь>     Сохранить резервную копию всех заметок в JSON-файл.
+                    Пример: cnote export backup.json
+
+  import <путь>     Загрузить заметки из бэкапа (существующие не затрутся).
+                    Пример: cnote import backup.json
+
+Справка:
+  help              Показать это руководство пользователя.
+==================================================================
+  `);
+}
+
 function addNote(text: string, tags: string[]): void {
   const data = readData();
   const newNote: Note = {
@@ -196,32 +243,19 @@ function importData(importPath: string): void {
  */
 
 function main() {
-  // --- БЛОК О Т Л А Д К И ---
-  // console.log('\x1b[33m%s\x1b[0m', '=== ДИАГНОСТИКА АРГУМЕНТОВ ===');
-  // console.log('Полный массив process.argv:');
-  // console.dir(process.argv);
-
-  // console.log('\nРазбор аргументов по индексам:');
-  // process.argv.forEach((value, index) => {
-  //   let description = '';
-  //   if (index === 0) description = '<- Путь к Node.js';
-  //   if (index === 1) description = '<- Путь к исполняемому файлу';
-  //   if (index === 2) description = '<- Команда (command)';
-  //   if (index > 2) description = `<- Доп. аргумент №${index - 2}`;
-  //   console.log(`  Индекс [${index}]: "${value}" ${description}`);
-  // });
-  // console.log('\x1b[33m%s\x1b[0m', '==============================\n');
-  // --- КОНЕЦ БЛОКА ОТЛАДКИ ---
-
   const args = process.argv.slice(2);
   const command = args[0];
 
   if (!command) {
-    console.log('Использование: cnote <command> [args]');
+    showHelp();
     return;
   }
 
   switch (command) {
+    case 'help':
+      showHelp();
+      break;
+
     case 'add': {
       const text = args[1];
       if (!text) {
@@ -300,6 +334,7 @@ function main() {
 
     default:
       console.log(`Неизвестная команда: ${command}`);
+      console.log('Используйте "cnote help" для просмотра списка команд.');
   }
 }
 
