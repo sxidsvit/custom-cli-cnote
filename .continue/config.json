@@ -1,21 +1,9 @@
 {
-  "models": [
-    {
-      "title": "Qwen3.6",
-      "provider": "ollama",
-      "model": "qwen3.6:latest"
-    },
-    {
-      "title": "Qwen3.5:9b",
-      "provider": "ollama",
-      "model": "qwen3.5:9b"
-    }
-  ],
   "customCommands": [
     {
       "name": "check-bugs",
-      "prompt": "Проанализируй код, используя правила из файла .continue/skills/check-bugs.md",
-      "description": "Проверка на баги"
+      "prompt": "Используй содержимое файла .continue/skills/check-bugs.md как инструкцию. Проанализируй предоставленный контекст на наличие ошибок.",
+      "description": "Проверка кода на баги через скилл"
     }
   ]
 }
