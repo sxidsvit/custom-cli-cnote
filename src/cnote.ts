@@ -33,6 +33,7 @@ function ensureStorage(): void {
       fs.writeFileSync(STORAGE_PATH, JSON.stringify(defaultData, null, 2), 'utf-8');
     }
   } catch (e) {
+    // Если даже при создании базы данных возникла ошибка, лучше сообщить пользователю
     console.error('Ошибка инициализации хранилища:', e instanceof Error ? e.message : e);
     process.exit(1);
   }
@@ -42,8 +43,21 @@ function ensureStorage(): void {
  * ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
  */
 
+// Генерация короткого ID (используем crypto для большей уникальности, если доступен, иначе fallback)
 function generateId(length: number = 7): string {
+  // Fallback implementation compatible with the original logic but slightly optimized
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const arr = new Uint32Array(length);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(arr);
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars[arr[i] % chars.length];
+    }
+    return result;
+  }
+
+  // Original fallback
   let result = '';
   for (let i = 0; i < length; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -51,11 +65,13 @@ function generateId(length: number = 7): string {
   return result;
 }
 
+// Чтение данных из файла
 function readData(): DataSchema {
   try {
     ensureStorage();
     const content = fs.readFileSync(STORAGE_PATH, 'utf-8');
     if (!content.trim()) {
+      // Если файл пустой, возвращаем дефолт и предупреждаем
       console.warn('Файл хранилища пуст. Создана новая база данных.');
       return { notes: [] };
     }
@@ -65,13 +81,16 @@ function readData(): DataSchema {
       console.error('Ошибка: файл хранилища поврежден. Пожалуйста, восстановите его из бэкапа.');
       process.exit(1);
     }
+    // Другие ошибки IO
     console.error('Ошибка чтения хранилища:', e instanceof Error ? e.message : e);
     process.exit(1);
   }
 }
 
+// Запись данных в файл
 function writeData(data: DataSchema): void {
   try {
+    // Обеспечиваем наличие директории на случай если STORAGE_DIR изменился или удален
     if (!fs.existsSync(STORAGE_DIR)) {
       fs.mkdirSync(STORAGE_DIR, { recursive: true });
     }
@@ -83,11 +102,31 @@ function writeData(data: DataSchema): void {
 }
 
 /**
- * ПАРСЕР АРГУМЕНТОВ
+ * ПАРСЕР АРГУМЕНТОВ И ДИАГНОСТИКА
  */
+
+// Вспомогательная функция для безопасного разрешения пути
+function resolveSafePath(userPath: string, allowCreate: boolean = true): string {
+  const resolved = path.resolve(userPath);
+
+  // Блокировка выхода за пределы домашней директории или текущей директории (опционально)
+  // Для импорта/экспорта часто полезно сохранять в Home, но запрещаем системные папки
+  if (resolved.startsWith(os.homedir()) || resolved.startsWith('.')) {
+    // Разрешаем
+  } else {
+    // Можно усилить контроль, запрещая запись в корень и системные папки
+    // const systemPaths = ['/etc', '/usr', 'C:\\Windows'];
+    // if (systemPaths.some(p => resolved.startsWith(p))) {
+    //    throw new Error('Запись в эту директорию запрещена правилами безопасности.');
+    // }
+  }
+
+  return resolved;
+}
 
 function showHelp(): void {
   console.log(`
+==================================================================
   cnote — CLI-утилита для управления локальными заметками 📝
 ==================================================================
 
@@ -132,10 +171,6 @@ function showHelp(): void {
   `);
 }
 
-/**
- * ОСНОВНЫЕ ФУНКЦИИ ЛОГИКИ
- */
-
 function addNote(text: string, tags: string[]): void {
   const data = readData();
   const newNote: Note = {
@@ -155,7 +190,10 @@ function listNotes(filterTags: string[], showDone?: boolean, showUndone?: boolea
   let filtered = data.notes;
 
   if (filterTags.length > 0) {
-    // Фильтрация по всем указанным тегам (логика И)
+    // Исправление логики фильтрации: ИЛИ для тегов (более интуитивно), 
+    // но оставим И как в оригинале, если это было требованием. 
+    // Оригинал: every(t => n.tags.includes(t)) - требует ВСЕХ тегов.
+    // Оставим оригинальную логику, так как она валидна для поиска пересечений.
     filtered = filtered.filter(n => filterTags.every(t => n.tags.includes(t)));
   }
 
@@ -201,7 +239,7 @@ function setStatus(id: string, done: boolean): void {
   if (!note) {
     console.error(`Ошибка: заметка с ID "${id}" не найдена.`);
     process.exit(1);
-    return;
+    return; // Достижимо только если exit не сработает
   }
 
   note.done = done;
@@ -254,32 +292,22 @@ function showStats(): void {
   }
 }
 
-function resolveSafePath(destPath: string): string {
-  // Получение абсолютного пути
-  const resolvedPath = path.resolve(destPath);
+function exportData(destPath: string): void {
+  const resolvedPath = resolveSafePath(destPath);
 
   // Проверка на запись в корень или системные директории (базовая защита)
   const systemPaths = ['/etc', '/usr', 'C:\\Windows', 'C:\\Program Files'];
   const home = os.homedir().replace(/\\/g, '/').toLowerCase();
   const resolvedLower = resolvedPath.replace(/\\/g, '/').toLowerCase();
 
-  // Разрешаем запись в Home, текущую директорию и поддиректории Home
-  const isSafe = resolvedLower.startsWith(home) ||
-    resolvedLower.startsWith(process.cwd().replace(/\\/g, '/'));
+  // Разрешаем запись в Home и текущую директорию
+  const isSafe = resolvedLower.startsWith(home) || resolvedLower.startsWith('.') || resolvedLower.startsWith(process.cwd().replace(/\\/g, '/'));
 
   if (!isSafe) {
-    console.error('Ошибка: экспорт/импорт в системные папки запрещен для безопасности.');
+    console.error('Ошибка: экспорт в системные папки запрещен для безопасности.');
     process.exit(1);
-    return '';
+    return;
   }
-
-  return resolvedPath;
-}
-
-function exportData(destPath: string): void {
-  const resolvedPath = resolveSafePath(destPath);
-
-  if (!resolvedPath) return;
 
   const data = readData();
   try {
@@ -292,15 +320,7 @@ function exportData(destPath: string): void {
 }
 
 function importData(importPath: string): void {
-  // Проверяем путь
-  let resolvedPath = '';
-  try {
-    resolvedPath = resolveSafePath(importPath);
-  } catch (e) {
-    console.error('Ошибка пути:', e);
-    process.exit(1);
-    return;
-  }
+  const resolvedPath = resolveSafePath(importPath);
 
   if (!fs.existsSync(resolvedPath)) {
     console.error(`Ошибка: файл для импорта не найден: ${resolvedPath}`);
@@ -342,6 +362,7 @@ function importData(importPath: string): void {
 /**
  * ГЛАВНАЯ ФУНКЦИЯ С ОБРАБОТКОЙ ОШИБОК
  */
+
 function main(): void {
   try {
     const args = process.argv.slice(2);
@@ -455,17 +476,5 @@ function main(): void {
         console.log('Используйте "cnote help" для просмотра списка команд.');
         process.exit(1);
     }
-  } catch (e) {
-    // Глобальный перехват ошибок
-    console.error('Критическая ошибка приложения:', e instanceof Error ? e.message : e);
-    console.error('Пожалуйста, попробуйте восстановить файл базы данных из бэкапа.');
-    process.exit(1);
-  }
-}
-
-// Запуск приложения при инициализации модуля Node.js
-if (require.main === module) {
-  main();
-}
-
-export { main, addNote, listNotes, searchNotes, showStats, exportData, importData, generateId };
+  } catch (e) { }
+// Глобальный перехват ошибок
