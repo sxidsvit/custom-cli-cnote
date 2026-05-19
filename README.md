@@ -193,3 +193,41 @@ Full process.argv array:
 ```
 
 It demonstrates visually how Node.js reads your input. System paths are trimmed using the `process.argv.slice(2)` method, and the remaining arguments are processed by the parser to route commands and flags.
+
+---
+
+## 🛠 Automating Analysis and Development with Continue
+
+The `cnote` project supports integration with the **Continue** extension for VS Code. This allows you to automate code checking, bug hunting, and refactoring using local LLMs (via Ollama).
+
+### Using Skills
+
+You can use pre-prepared instructions for analyzing the project. All available skills are stored in the `.continue/skills/` folder.
+
+#### How to run an analysis:
+
+To run any skill (e.g., checking for bugs), use the universal command `/run-skill` in the Continue chat:
+
+1. Open the Continue chat (`Ctrl + L`).
+
+2. Type the command: `/run-skill`.
+
+3. Type `@` and select the skill file you want to apply (e.g., `@.continue/skills/check-bugs.md`).
+
+4. Type `@` again and select the code file you want to analyze (e.g., `@cnote.ts`).
+
+5. Press **Enter**.
+
+The model will automatically read your instructions from the `.md` file and apply them to the selected code.
+
+### Adding Custom Project Rules
+
+In the root of the project, there is a `PROJECT_RULES.md` file. It contains coding standards and typing rules for `cnote`.
+
+To ensure the agent always follows these rules, use them in your prompts:
+
+```
+/ask @PROJECT_RULES.md Analyze this code for compliance with project standards.
+```
+
+This ensures the AI adheres to the strict typing and error-handling logic described in the `cnote` rules.
